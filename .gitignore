@@ -23,6 +23,9 @@ yarn-error.log*
 # Generated mockups — regenerable from saved DNAs, not committed
 generated/
 
+# Preset reference page — regenerable from presets.ts, not committed
+previews/
+
 # Saved DNAs are local — only the public example ships in the repo
 library/*.json
 !library/example-*.json

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "generate": "tsx bin/generate.ts",
+    "preview": "tsx bin/preview.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
