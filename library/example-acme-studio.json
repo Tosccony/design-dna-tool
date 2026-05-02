@@ -1,0 +1,18 @@
+{
+  "projectId": "example-001",
+  "projectName": "Acme Studio",
+  "client": "Acme Studio",
+  "typographyId": "typo.editorial-fraunces",
+  "colorId": "color.paper",
+  "layoutId": "layout.split-editorial",
+  "easingsByRole": {
+    "primary": "ease.expo-out",
+    "entrance": "ease.expo-out",
+    "exit": "ease.power4-in-out",
+    "attention": "ease.snappy-out"
+  },
+  "motionPrimitiveIds": [
+    "motion.text-mask-reveal",
+    "motion.magnetic-button"
+  ]
+}

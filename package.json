@@ -1,0 +1,16 @@
+{
+  "name": "design-dna-tool",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal designer's assistant for generating high-end Next.js mockups.",
+  "type": "module",
+  "scripts": {
+    "generate": "tsx bin/generate.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,133 @@
+/image — quick reference
+
+WHAT IT IS
+A command for generating one-off images via Nano Banana (Gemini 2.5 Flash
+Image). You give it a free-form prompt; Claude proposes 2-3 art-direction
+takes with suggested aspect ratios, you pick one, it generates and saves
+the image. Different from /enrich, which is for filling images into a
+generated mockup.
+
+
+PREREQUISITES
+- GEMINI_API_KEY env var set with billing enabled. Each image is ~$0.04.
+- Generate a key at https://aistudio.google.com/apikey
+- Set persistently in PowerShell:
+    [System.Environment]::SetEnvironmentVariable('GEMINI_API_KEY', 'YOUR-KEY', 'User')
+  Then restart the terminal so the env var is picked up.
+
+
+BASIC USAGE
+  /image a fisherman on a dock at dawn
+
+Claude will respond with 2-3 different directions, e.g.:
+
+  1. Documentary 35mm        ratio 3:2     warm and intimate
+  2. Cinematic Wide          ratio 21:9    epic but loses face detail
+  3. Risograph Two-Color     ratio 4:3     graphic, less photographic
+
+Each one comes with a full enriched prompt. You reply "1" or "2 but at
+golden hour" or "do another round, all medium-format" and Claude takes it
+from there.
+
+
+FLAGS
+
+  --ratio <ratio>
+    Pre-pick the aspect ratio. Skips the recommendation step.
+    Valid: 16:9, 9:16, 4:3, 1:1, 3:2, 2:3, 21:9
+    Example: /image dried lavender on linen --ratio 1:1
+
+  --out <path>
+    Override save location. Default is generated/_images/<slug>-<timestamp>.png
+    Example: /image moody hotel lobby --out C:/temp/lobby.png
+
+  --yolo
+    Skip the proposal step. Claude picks the strongest enrichment internally
+    and dispatches immediately. Best when you're iterating fast.
+    Example: /image neon-lit ramen counter --yolo
+
+  Flags can combine:
+    /image a quiet kitchen still life --ratio 4:3 --yolo
+
+
+WHERE IMAGES ARE SAVED
+By default: generated/_images/<slug>-<YYYYMMDD-HHMMSS>.png
+
+That folder is gitignored, so scratch images don't pollute the repo. If
+you want to commit one, use:
+  git add -f generated/_images/<filename>
+
+
+GOOD PROMPTS START SPECIFIC
+The model gets better output the more concrete the subject is. Compare:
+
+  weak:    "a man"
+  strong:  "a weathered fisherman in a yellow oilskin"
+
+  weak:    "some flowers"
+  strong:  "a handful of dried lavender on raw linen"
+
+  weak:    "a cafe"
+  strong:  "the corner of an empty Italian cafe at 6am, espresso machine
+            warming up"
+
+You don't have to write a full enriched prompt yourself — that's what
+Claude does. But the more grounded your starting point, the better the
+proposed directions will be.
+
+
+CHOOSING AN ASPECT RATIO
+
+  16:9   wide hero, landscape, cinematic establishing shot
+  9:16   phone wallpaper, vertical poster, IG story
+  4:3    classic photo, portfolio thumbnail, web grid
+  1:1    social square, product still, centered single subject
+  3:2    DSLR-native, editorial photo (looks "real")
+  2:3    magazine cover, portrait orientation
+  21:9   ultrawide cinematic banner
+
+Note: Nano Banana's REST API doesn't take a ratio parameter — the ratio
+is described in the prompt itself. Sometimes the model misses the target
+slightly. If the result is close but cropped wrong, ask Claude to retry
+with the ratio mentioned more emphatically.
+
+
+REFINING
+
+After a generation, you can:
+- "regenerate with the lighting warmer"
+- "try direction 2 from before"
+- "same shot but at night"
+- "make it grainier" / "make it cleaner"
+- "do another round of directions"
+
+Claude edits the relevant clause of the prompt rather than rewriting from
+scratch — so iteration is cheap and the look stays consistent.
+
+
+COMMON GOTCHAS
+
+- "GEMINI_API_KEY not set" — env var isn't loaded. Restart the terminal
+  after setting it, or set it in the current session with:
+    $env:GEMINI_API_KEY = 'YOUR-KEY'
+
+- "quota exceeded" / "billing" — the API key needs billing enabled at
+  https://aistudio.google.com/apikey. Nano Banana has no free tier.
+
+- Image came back with text/letters in it — the negative cues weren't
+  emphatic enough. Ask Claude to retry with a stronger "no text, no
+  letters, no signage" clause.
+
+- Image included a brand or logo — same fix. The negative cues are baked
+  into every prompt but the model occasionally slips.
+
+
+WHAT NOT TO USE THIS FOR
+- Mockup imagery (heroes, work tiles, service cards, etc.) — use /enrich
+  <slug> instead, which is DNA-aware and pulls art direction from the
+  mockup's CLAUDE.md.
+- Bulk batches — this is one image per call. For many images at once,
+  /enrich handles parallelism with sub-agents.
+- Anything you can't legally use — the negative cues protect against
+  trademarks and logos, but you're still responsible for what you do
+  with the output.

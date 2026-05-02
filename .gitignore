@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.eslintcache
+
+# Env / secrets — never commit any variant
+.env
+.env.*
+!.env.example
+
+# Claude Code local state
+.claude/settings.local.json
+.worktrees/
+
+# Generated mockups — regenerable from saved DNAs, not committed
+generated/
+
+# Saved DNAs are local — only the public example ships in the repo
+library/*.json
+!library/example-*.json
+
+# Implementation plans — internal dev artifacts, not user-facing docs
+docs/plans/
+
+# Build output (tool itself doesn't build, but generated mockups might)
+dist/
+build/
+.next/
+coverage/
+*.tsbuildinfo
