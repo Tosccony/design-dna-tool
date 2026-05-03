@@ -33,7 +33,7 @@ library/*.json
 # Implementation plans — internal dev artifacts, not user-facing docs
 docs/plans/
 
-# Personal research notes — kept local, not part of the shared moat
+# Local-only files (not part of the shared repo)
 docs/research/personal-portfolio-2026-04-29.md
 
 # Build output (tool itself doesn't build, but generated mockups might)
