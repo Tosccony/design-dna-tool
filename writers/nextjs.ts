@@ -29,6 +29,7 @@ import * as path from 'node:path';
 import type { DesignDNA } from '../presets';
 import { compileDesignDNA, type CompiledDNA } from '../compiler';
 import type { WriteProjectOptions, WriteProjectResult } from './index';
+import { copyDirRecursive } from './shared';
 
 // ================================================================
 // Public API
@@ -99,6 +100,17 @@ export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
   // Docs
   write('CLAUDE.md', renderClaudeMd(dna, compiled));
   write('README.md', renderReadme(dna));
+
+  // Inherit /enrich-generated images from a sibling framework's output
+  // if one exists. Both Next.js and Astro serve public/images/* at the
+  // same URL paths, so a single enrichment populates both mockups.
+  if (opts.inheritAssetsFrom) {
+    const target = path.join(outDir, 'public', 'images');
+    const inherited = copyDirRecursive(opts.inheritAssetsFrom, target);
+    for (const rel of inherited) {
+      filesWritten.push(path.posix.join('public/images', rel));
+    }
+  }
 
   return { outDir, filesWritten };
 }

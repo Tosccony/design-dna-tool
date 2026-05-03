@@ -16,7 +16,12 @@ import * as path from 'node:path';
 import { parseArgs } from 'node:util';
 
 import type { DesignDNA } from '../presets';
-import { writers, availableFrameworks, isFramework } from '../writers';
+import {
+  writers,
+  availableFrameworks,
+  isFramework,
+  findSiblingAssetsDir,
+} from '../writers';
 
 // ================================================================
 // Argument parsing
@@ -26,11 +31,12 @@ function parseCliArgs() {
   try {
     return parseArgs({
       options: {
-        'out-dir':   { type: 'string' },
-        'name':      { type: 'string' },
-        'overwrite': { type: 'boolean' },
-        'framework': { type: 'string', short: 'f' },
-        'help':      { type: 'boolean', short: 'h' },
+        'out-dir':            { type: 'string' },
+        'name':               { type: 'string' },
+        'overwrite':          { type: 'boolean' },
+        'framework':          { type: 'string', short: 'f' },
+        'no-inherit-assets':  { type: 'boolean' },
+        'help':               { type: 'boolean', short: 'h' },
       },
       allowPositionals: true,
     });
@@ -50,11 +56,14 @@ Arguments:
   <dna.json>        Path to a saved DNA JSON file (e.g. library/foo.json)
 
 Options:
-  --out-dir <dir>   Override output directory (default: generated/<slug>)
-  --name <slug>     Override the slug used for the output folder
-  --overwrite       Overwrite an existing output directory
-  -f, --framework <name>  Target framework: nextjs (default)
-  -h, --help        Show this help
+  --out-dir <dir>         Override output directory (default: generated/<slug>)
+  --name <slug>           Override the slug used for the output folder
+  --overwrite             Overwrite an existing output directory
+  -f, --framework <name>  Target framework: nextjs (default), astro
+  --no-inherit-assets     Skip copying images from a sibling framework's
+                          output (default: inherit if a sibling has been
+                          enriched, so /enrich runs once per DNA)
+  -h, --help              Show this help
 
 Examples:
   tsx bin/generate.ts library/thursday-flowers.json
@@ -185,9 +194,19 @@ function main() {
   const defaultDirName = framework === 'nextjs' ? slug : `${slug}.${framework}`;
   const outDir = values['out-dir'] ?? path.join('generated', defaultDirName);
 
+  // Auto-inherit assets from a sibling framework's output if one has
+  // already been enriched. Lets a single /enrich pass populate both
+  // mockups for a DNA.
+  const inheritAssetsFrom = values['no-inherit-assets']
+    ? null
+    : findSiblingAssetsDir(slug, framework);
+
   console.log(`→ Generating mockup`);
   console.log(`  DNA:    ${dnaPath}`);
   console.log(`  Output: ${outDir}`);
+  if (inheritAssetsFrom) {
+    console.log(`  Assets: inheriting from ${inheritAssetsFrom}`);
+  }
   console.log(``);
 
   // Generate
@@ -197,6 +216,7 @@ function main() {
       dna,
       outDir,
       overwrite: values.overwrite,
+      inheritAssetsFrom: inheritAssetsFrom ?? undefined,
     });
   } catch (err) {
     const message = (err as Error).message;
