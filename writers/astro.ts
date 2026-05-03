@@ -99,6 +99,10 @@ export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
   // Pages
   write('src/pages/index.astro', renderIndexPage(dna, hasChrome));
 
+  // Docs
+  write('CLAUDE.md', renderClaudeMd(dna, compiled));
+  write('README.md', renderReadme(dna));
+
   return { outDir, filesWritten };
 }
 
@@ -955,6 +959,208 @@ const year = new Date().getFullYear();
     Mockup &middot; {year}
   </span>
 </footer>
+`;
+}
+
+// ================================================================
+// Documentation renderers
+// ================================================================
+
+function renderClaudeMd(dna: DesignDNA, compiled: CompiledDNA): string {
+  const t = compiled.resolved.typography;
+  const c = compiled.resolved.color;
+  const l = compiled.resolved.layout;
+  const e = compiled.resolved.easings;
+  const motion = compiled.resolved.motion;
+
+  return `# Design DNA: ${dna.projectName}
+
+This project was scaffolded by the Design DNA system. **Read this file before
+making any visual or structural changes** — it captures the aesthetic
+constraints that keep the project coherent. Future regenerations or refactors
+should preserve these constraints unless explicitly told otherwise.
+
+## Project context
+
+- **Client:** ${dna.client}
+- **Project ID:** \`${dna.projectId}\`
+- **Framework:** Astro 5 + Tailwind v4
+- **Stage:** mockup → starter for production build
+
+---
+
+## Design DNA
+
+### Typography: ${t.name}
+
+> ${t.character}
+
+- **Display family:** \`${t.display.name}\`, weights ${t.display.weights.join(', ')}
+  - Weight: ${t.displaySpec.weight} · Line-height: ${t.displaySpec.lineHeight} · Tracking: ${t.displaySpec.tracking}em
+${t.display.opticalSizing ? '  - Uses optical sizing (font-optical-sizing: auto)\n' : ''}- **Body family:** \`${t.body.name}\`, weights ${t.body.weights.join(', ')}
+  - Weight: ${t.bodySpec.weight} · Line-height: ${t.bodySpec.lineHeight} · Tracking: ${t.bodySpec.tracking}em
+- **Scale ratio:** ${t.scaleRatio} · Base size: ${t.baseSize}px
+${t.photoDirection ? `\n**Photo direction:** ${t.photoDirection}\n` : ''}
+### Color: ${c.name} (${c.mode} mode)
+
+> ${c.character}
+
+| Token | Value |
+|---|---|
+| \`background\` | \`${c.tokens.background}\` |
+| \`surface\` | \`${c.tokens.surface}\` |
+| \`surface-alt\` | \`${c.tokens.surfaceAlt}\` |
+| \`ink\` (primary text) | \`${c.tokens.ink}\` |
+| \`ink-muted\` | \`${c.tokens.inkMuted}\` |
+| \`ink-subtle\` | \`${c.tokens.inkSubtle}\` |
+| \`accent\` | \`${c.tokens.accent}\` |
+| \`accent-ink\` | \`${c.tokens.accentInk}\` |
+| \`border\` | \`${c.tokens.border}\` |
+| \`border-strong\` | \`${c.tokens.borderStrong}\` |
+
+**Accent rules:** ${c.accentRules}
+${c.photoDirection ? `\n**Photo direction:** ${c.photoDirection}\n` : ''}
+### Layout: ${l.name}
+
+> ${l.character}
+
+- **Hero pattern:** \`${l.hero}\`
+- **Grid:** ${l.grid.columns} columns · ${l.grid.gutter} gutter · ${l.grid.maxWidth} max-width
+- **Flow:** ${l.flow} · **Density:** ${l.density}
+
+${l.notes}
+${l.photoDirection ? `\n**Photo direction:** ${l.photoDirection}\n` : ''}
+### Easings
+
+| Role | Preset | cubic-bezier | Personality |
+|---|---|---|---|
+| Primary | ${e.primary.name} | \`${e.primary.bezier.join(', ')}\` | ${e.primary.personality} |
+| Entrance | ${e.entrance.name} | \`${e.entrance.bezier.join(', ')}\` | ${e.entrance.personality} |
+| Exit | ${e.exit.name} | \`${e.exit.bezier.join(', ')}\` | ${e.exit.personality} |
+| Attention | ${e.attention.name} | \`${e.attention.bezier.join(', ')}\` | ${e.attention.personality} |
+
+### Motion primitives included
+
+${motion.map((m) => `- **${m.name}** (\`${m.library}\`) — ${m.description}\n  > ${m.notes}`).join('\n\n')}
+
+---
+
+## Animation conventions
+
+- **GSAP for everything motion.** All scroll-triggered animations,
+  cursor-following, and timeline work go through GSAP. ScrollTrigger lives
+  in primitive components (\`src/components/primitives/\`), never inline in
+  section components.
+- **Native View Transitions for routing.** \`<ClientRouter />\` from
+  \`astro:transitions\` is mounted in \`src/layouts/Layout.astro\` when the DNA
+  includes \`motion.page-transition\`. Cross-page navigation uses the
+  browser's View Transitions API; per-element \`transition:animate\` directives
+  customize the choreography.
+- **Bind on \`astro:page-load\`.** This event fires both on initial paint AND
+  after every view-transition navigation. Primitives must guard against
+  re-running on already-initialized DOM via a \`data-*-initialized\` flag.
+- **Use \`transition:persist\` to preserve elements across navigation.** The
+  preloader uses this so the counter doesn't re-fire mid-transition.
+- **Respect \`prefers-reduced-motion\`.** Each primitive's \`<script>\` checks
+  \`window.matchMedia('(prefers-reduced-motion: reduce)').matches\` and
+  early-returns. The CSS override in \`global.css\` neutralizes most
+  declarative animations as a backstop.
+
+## File structure
+
+\`\`\`
+src/
+  layouts/
+    Layout.astro       — root layout, fonts, <ClientRouter />, <slot />
+  pages/
+    index.astro        — landing page composing the cinematic-gallery sections
+  styles/
+    global.css         — Tailwind v4 @theme tokens (DO NOT edit by hand)
+  components/
+    Chrome.astro       — page-level motion mounts (preloader, cursor follower)
+    primitives/        — one .astro per motion primitive (TextMaskReveal, …)
+    sections/          — page-level section components (Hero, Approach, …)
+public/
+  images/              — populated by /enrich, gitignore'd by default
+\`\`\`
+
+## Tailwind v4 utilities available
+
+This project uses Tailwind v4. The \`@theme\` block in \`src/styles/global.css\`
+generates utilities automatically — there is no \`tailwind.config.js\`.
+
+**Color utilities:** \`bg-background\`, \`bg-surface\`, \`bg-surface-alt\`, \`bg-accent\`,
+\`text-ink\`, \`text-ink-muted\`, \`text-ink-subtle\`, \`text-accent\`,
+\`border-border\`, \`border-border-strong\`.
+
+**Type sizes (display sizes are fluid):** \`text-micro\`, \`text-small\`, \`text-base\`,
+\`text-lead\`, \`text-h4\`, \`text-h3\`, \`text-h2\`, \`text-h1\`, \`text-display\`.
+
+**Easings:** \`ease-primary\`, \`ease-entrance\`, \`ease-exit\`, \`ease-attention\`.
+
+**Project-specific helper classes** (not Tailwind utilities):
+- \`.display\` — applies the display family + weight + line-height + tracking
+- \`.eyebrow\` — small uppercase label styling
+
+## Don't do this
+
+- **No default Tailwind colors.** No \`text-gray-500\`, no \`bg-zinc-100\`. The
+  design DNA tokens are the entire palette. If you need another shade, add
+  it to the DNA, regenerate, and rebuild — don't sneak it inline.
+- **No default Tailwind easings.** Don't use \`ease-in-out\`, \`ease-out\`. Use
+  \`ease-primary\`, \`ease-entrance\`, etc.
+- **Don't add fonts.** The two families in the DNA are it. A third
+  sans-serif "for variety" is the cookie-cutter trap.
+- **Don't use the accent color for body text or large backgrounds.** See
+  Accent rules above.
+- **Don't add new motion primitives without thinking.** First check whether
+  existing primitives compose to make what you need. New primitives go in
+  \`src/components/primitives/\` with frontmatter or top-of-file comment
+  explaining what they do and why.
+- **Don't use centered three-card layouts unless the layout DNA calls for
+  them.** The Bootstrap 6/6 split and the centered-three-cards pattern are
+  the two biggest cookie-cutter giveaways.
+`;
+}
+
+function renderReadme(dna: DesignDNA): string {
+  return `# ${dna.projectName}
+
+Mockup scaffolded from a Design DNA composition for ${dna.client}.
+
+## Run locally
+
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
+
+Open http://localhost:4321.
+
+## Build
+
+\`\`\`bash
+npm run build
+\`\`\`
+
+The output goes to \`dist/\` as a fully static site — deploy to any static host.
+
+## Design system
+
+The visual design tokens (color, typography, motion easings) are in
+\`src/styles/global.css\` under the \`@theme\` block. **Do not edit them by hand** —
+they're generated from this project's Design DNA. To change them, modify
+the source DNA and regenerate.
+
+See [CLAUDE.md](./CLAUDE.md) for the full design brief.
+
+## Stack
+
+- Astro 5
+- Tailwind v4 (CSS-first config via \`@theme\`)
+- GSAP for scroll-driven motion + interaction primitives
+- Native browser View Transitions via \`<ClientRouter />\`
+- TypeScript (\`astro check\` for typechecking)
 `;
 }
 
