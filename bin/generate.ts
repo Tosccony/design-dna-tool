@@ -16,7 +16,7 @@ import * as path from 'node:path';
 import { parseArgs } from 'node:util';
 
 import type { DesignDNA } from '../presets';
-import { writeProject } from '../writer';
+import { writeProject } from '../writers/nextjs';
 
 // ================================================================
 // Argument parsing

@@ -26,8 +26,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import type { DesignDNA } from './presets';
-import { compileDesignDNA, type CompiledDNA } from './compiler';
+import type { DesignDNA } from '../presets';
+import { compileDesignDNA, type CompiledDNA } from '../compiler';
 
 // ================================================================
 // Public API
