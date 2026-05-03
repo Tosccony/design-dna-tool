@@ -277,8 +277,49 @@ const hero = {
 }
 
 function renderApproachSection(): string {
-  return `<section class="approach">
-  <h2>Approach — placeholder</h2>
+  // Eyebrow + display statement + 3 service columns. The 3-column row uses
+  // the layout's 12-col grid (col-span-4 each on lg) — not a centered
+  // three-card pattern. Each column leads with a numbered eyebrow and
+  // sits behind a top border to read like a typographic ledger.
+  return `---
+const services = [
+  {
+    id: '01',
+    name: 'Architecture',
+    description:
+      'Full-service residential design — site evaluation through construction documents. Every plan starts with the way the family will live in the home, not with the house itself.',
+  },
+  {
+    id: '02',
+    name: 'Interiors',
+    description:
+      'Material, light, and proportion read together as one composition. Selections completed in lockstep with construction, never bolted on after.',
+  },
+  {
+    id: '03',
+    name: 'Construction',
+    description:
+      'In-house build team. The drawings the architect made are the drawings we build — no value-engineering away the parts that make it the project.',
+  },
+];
+---
+
+<section class="px-6 lg:px-12 py-40 border-t border-border">
+  <span class="eyebrow mb-12 block">Approach</span>
+  <h2 class="display text-h2 text-ink max-w-4xl">
+    We design and build a small number of homes each year, every one held to the same standard from the foundation to the last detail.
+  </h2>
+
+  <div class="mt-32 grid grid-cols-12 gap-8">
+    {services.map((s) => (
+      <div class="col-span-12 lg:col-span-4 border-t border-border pt-8">
+        <span class="eyebrow text-ink-subtle mb-6 block">
+          {s.id} &nbsp;/&nbsp; {s.name}
+        </span>
+        <p class="text-base text-ink-muted">{s.description}</p>
+      </div>
+    ))}
+  </div>
 </section>
 `;
 }
@@ -363,15 +404,32 @@ const works = [
 }
 
 function renderTestimonialSection(): string {
-  return `<section class="testimonial">
-  <h2>Testimonial — placeholder</h2>
+  return `<section class="px-6 lg:px-12 py-40 border-t border-border">
+  <span class="eyebrow mb-12 block">In their words</span>
+  <blockquote class="display text-h2 text-ink max-w-5xl">
+    &ldquo;We expected a house. They built a home &mdash; every detail handled with the kind of attention you only see in books.&rdquo;
+  </blockquote>
+  <div class="mt-12 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+    <span class="display text-h4 text-ink">— The Lindgren Family</span>
+    <span class="eyebrow text-ink-subtle">Larkspur Residence, 2025</span>
+  </div>
 </section>
 `;
 }
 
-function renderFooterSection(_dna: DesignDNA): string {
-  return `<footer>
-  <p>Footer — placeholder</p>
+function renderFooterSection(dna: DesignDNA): string {
+  // Year is computed at build time via Astro frontmatter (static), not at
+  // render time on the client — same shape Next.js used (`new Date()` in
+  // server-rendered RSC).
+  return `---
+const year = new Date().getFullYear();
+---
+
+<footer class="px-6 lg:px-12 py-16 border-t border-border flex flex-wrap justify-between items-end gap-6">
+  <span class="display text-h4 text-ink">${dna.projectName}</span>
+  <span class="eyebrow text-ink-subtle">
+    Mockup &middot; {year}
+  </span>
 </footer>
 `;
 }
