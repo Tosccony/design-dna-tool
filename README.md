@@ -1,6 +1,6 @@
 # Design DNA Tool
 
-A schema-driven mockup generator for high-end Next.js websites. Compose a "Design DNA" from a curated library of typography, color, layout, and motion presets, then run a writer that turns that DNA into a complete, runnable Next.js 15 + Tailwind v4 starter project.
+A schema-driven mockup generator for high-end websites. Compose a "Design DNA" from a curated library of typography, color, layout, and motion presets, then run a writer that turns that DNA into a complete, runnable starter project. Default output is Next.js 15 + Tailwind v4; pass `--framework astro` for an Astro 5 + Tailwind v4 build of the same DNA.
 
 The point of the schema is to fight cookie-cutter output. By forcing every project to commit to a curated typography/color/motion combination — rather than leaving the AI to free-style — generated mockups stay distinctive instead of collapsing into the bland "centered hero with three feature cards" pattern that AI-generated sites trend toward.
 
@@ -15,7 +15,8 @@ It's used as a designer's assistant inside Claude Code: brainstorm a brief, prop
 ## Stack
 
 - **Tool**: TypeScript run via `tsx` (no build step)
-- **Generated mockups**: Next.js 15 (App Router) · React 19 · Tailwind v4 (CSS-first `@theme`, no `tailwind.config.js`) · Framer Motion · GSAP · Lenis · TypeScript
+- **Generated mockups (Next.js, default)**: Next.js 15 (App Router) · React 19 · Tailwind v4 (CSS-first `@theme`, no `tailwind.config.js`) · Framer Motion · GSAP · Lenis · TypeScript
+- **Generated mockups (Astro, opt-in)**: Astro 5 · Tailwind v4 (`@tailwindcss/vite`) · GSAP · native View Transitions (`<ClientRouter />`) · TypeScript. v1 supports `layout.cinematic-gallery` only; other layouts error loudly until they're ported.
 
 ## Setup
 
@@ -44,10 +45,11 @@ The key is read from `process.env.GEMINI_API_KEY` at runtime by [`bin/gemini-ima
 
 ### `tsx bin/generate.ts <dna.json>`
 
-Generates a Next.js project from a saved DNA. The output goes to `generated/<slug>/`, where `<slug>` defaults to the DNA filename without extension.
+Generates a project from a saved DNA. The output goes to `generated/<slug>/` (Next.js, default) or `generated/<slug>.astro/` (Astro), where `<slug>` defaults to the DNA filename without extension. Both outputs coexist for the same DNA without collision.
 
 ```bash
-tsx bin/generate.ts library/example-acme-studio.json
+tsx bin/generate.ts library/example-acme-studio.json                # Next.js (default)
+tsx bin/generate.ts library/example-acme-studio.json -f astro       # Astro
 
 # Equivalent via npm:
 npm run generate -- library/example-acme-studio.json
@@ -56,8 +58,11 @@ npm run generate -- library/example-acme-studio.json
 tsx bin/generate.ts library/foo.json --overwrite          # blow away existing dir
 tsx bin/generate.ts library/foo.json --out-dir /tmp/foo   # custom output path
 tsx bin/generate.ts library/foo.json --name custom-slug   # custom slug
+tsx bin/generate.ts library/foo.json -f <framework>       # nextjs (default) | astro
 tsx bin/generate.ts -h                                    # full help
 ```
+
+The compiler is framework-agnostic — both writers consume the same `@theme` block from `compiler.ts`, so visual output is identical across frameworks. Per-framework writers live in `writers/`. Adding a new framework is the same shape applied to a new file (`writers/sveltekit.ts`, etc.).
 
 ### `tsx bin/gemini-image.ts "<prompt>" <output-path>`
 
@@ -75,15 +80,18 @@ Runs `tsc --noEmit` over the tool source. Generated projects under `generated/` 
 
 ## Viewing a generated mockup
 
-Each generated project is a standalone Next.js app:
+Each generated project is a standalone npm package:
 
 ```bash
-cd generated/<slug>
+cd generated/<slug>            # Next.js — open http://localhost:3000
+# or
+cd generated/<slug>.astro      # Astro   — open http://localhost:4321
+
 npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. The generated project has its own `README.md` and `CLAUDE.md` describing its specific Design DNA and edit conventions.
+The generated project has its own `README.md` and `CLAUDE.md` describing its specific Design DNA and edit conventions.
 
 ## Claude Code commands
 
@@ -105,8 +113,11 @@ You don't need Claude Code to use the tool — the CLI scripts work standalone �
 ├── CLAUDE.md             # Operating spec (loaded by Claude Code)
 ├── README.md             # This file
 ├── presets.ts            # Schema types + curated preset library
-├── compiler.ts           # DesignDNA → Tailwind v4 @theme block + type scale
-├── writer.ts             # DesignDNA → full Next.js project on disk
+├── compiler.ts           # DesignDNA → Tailwind v4 @theme block + type scale (framework-agnostic)
+├── writers/              # Per-framework writers (DesignDNA → project on disk)
+│   ├── index.ts          # Registry + shared WriteProject interface
+│   ├── nextjs.ts         # Next.js 15 + React 19 (default)
+│   └── astro.ts          # Astro 5 (--framework astro)
 ├── bin/
 │   ├── generate.ts       # CLI: tsx bin/generate.ts <dna.json>
 │   └── gemini-image.ts   # REST client for Nano Banana image gen
@@ -124,7 +135,7 @@ You don't need Claude Code to use the tool — the CLI scripts work standalone �
 
 ## Design DNA, in one paragraph
 
-A `DesignDNA` is a JSON object that references presets by ID — one typography preset, one color preset, one layout archetype, a set of easing roles, and a list of motion primitives — plus an `overrides` block for project-specific tweaks. The full schema and the seed preset library live in [`presets.ts`](./presets.ts). The compiler turns a DNA into a Tailwind v4 `@theme` block + type scale; the writer turns it into a complete Next.js project. New presets get added by hand based on real reference research (`/research`), not generated — the curated library is the aesthetic.
+A `DesignDNA` is a JSON object that references presets by ID — one typography preset, one color preset, one layout archetype, a set of easing roles, and a list of motion primitives — plus an `overrides` block for project-specific tweaks. The full schema and the seed preset library live in [`presets.ts`](./presets.ts). The compiler turns a DNA into a Tailwind v4 `@theme` block + type scale; per-framework writers turn it into a complete starter project. New presets get added by hand based on real reference research (`/research`), not generated — the curated library is the aesthetic.
 
 For example DNAs, see the JSON files in [`library/`](./library/).
 

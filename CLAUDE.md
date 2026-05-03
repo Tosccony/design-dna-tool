@@ -1,6 +1,6 @@
 # Design DNA Tool
 
-A personal designer's assistant for generating high-end Next.js website mockups. You — Claude Code — are the interface. Your job is to help me brainstorm, analyze references, compose Design DNAs, and generate mockup projects from them.
+A personal designer's assistant for generating high-end website mockups in multiple frameworks (Next.js by default, Astro via `--framework astro`). You — Claude Code — are the interface. Your job is to help me brainstorm, analyze references, compose Design DNAs, and generate mockup projects from them.
 
 This file is the spec for how to operate the tool. Read it carefully on first load; the directory structure, schema, and workflow described here are the contract.
 
@@ -8,7 +8,7 @@ This file is the spec for how to operate the tool. Read it carefully on first lo
 
 ## What this repo is
 
-A schema-driven mockup generator built around a "Design DNA" composition system. Each mockup is composed from curated presets (typography, color, easing, motion primitives, layout archetype). The compiler turns a DNA into a Tailwind v4 `@theme` block plus type scale. The writer turns a DNA into a complete, runnable Next.js 15 + React 19 + Tailwind v4 starter project — including font setup, motion primitives, and a mockup-specific `CLAUDE.md` for future work in that project.
+A schema-driven mockup generator built around a "Design DNA" composition system. Each mockup is composed from curated presets (typography, color, easing, motion primitives, layout archetype). The compiler turns a DNA into a Tailwind v4 `@theme` block plus type scale. Per-framework writers (`writers/nextjs.ts`, `writers/astro.ts`) turn a DNA into a complete, runnable starter project — including font setup, motion primitives, and a mockup-specific `CLAUDE.md` for future work in that project. Default output is Next.js 15 + React 19; pass `--framework astro` for Astro 5 (Astro v1 supports `layout.cinematic-gallery` only).
 
 The point of the schema is to fight cookie-cutter output. By forcing every project to commit to a curated typography/color/motion combination, we get distinctive mockups instead of the AI-generated mush that comes from open-ended "make me a website" prompts.
 
@@ -26,7 +26,10 @@ The point of the schema is to fight cookie-cutter output. By forcing every proje
 ├── CLAUDE.md                  # This file
 ├── presets.ts                 # Schema types + curated preset library (seed)
 ├── compiler.ts                # DesignDNA -> theme CSS + fonts + type scale
-├── writer.ts                  # DesignDNA -> full Next.js project on disk
+├── writers/                   # Per-framework writers (DesignDNA -> project on disk)
+│   ├── index.ts               # Registry + shared WriteProject interface
+│   ├── nextjs.ts              # Next.js 15 + React 19 + Tailwind v4 (default)
+│   └── astro.ts               # Astro 5 + Tailwind v4 (--framework astro)
 ├── bin/
 │   ├── generate.ts            # CLI entrypoint: tsx bin/generate.ts <dna.json>
 │   └── gemini-image.ts        # Direct REST client for Nano Banana (asset-enrichment auto mode)
@@ -34,7 +37,7 @@ The point of the schema is to fight cookie-cutter output. By forcing every proje
 │   ├── analyze-url.ts         # Fetch a URL, extract design characteristics
 │   └── propose-dna.ts         # Inputs -> 2-3 DNA proposals
 ├── library/                   # Saved DNAs (one .json per project), reusable
-├── generated/                 # Mockup outputs — each is a runnable Next.js project
+├── generated/                 # Mockup outputs — Next.js at <slug>/, Astro at <slug>.astro/
 ├── docs/
 │   ├── plans/                 # Design + implementation plans (one .md pair per feature)
 │   └── research/              # Accumulated /research session notes (library asset)
@@ -114,11 +117,12 @@ Don't run the writer until I've explicitly chosen a DNA. The DNA-picking is the 
 When I confirm:
 
 1. Save the DNA to `library/<slug>.json`. Use a memorable slug — client name or project name, kebab-case.
-2. Run the writer via `bin/generate.ts`:
+2. Run the writer via `bin/generate.ts`. Default is Next.js; pass `-f astro` for Astro:
    ```
-   tsx bin/generate.ts library/<slug>.json
+   tsx bin/generate.ts library/<slug>.json              # Next.js → generated/<slug>/
+   tsx bin/generate.ts library/<slug>.json -f astro     # Astro   → generated/<slug>.astro/
    ```
-   This writes the project to `generated/<slug>/`.
+   The two outputs coexist for the same DNA. Astro v1 supports `layout.cinematic-gallery` only; other layouts error loudly.
 3. Briefly summarize what was generated (which presets, key files, how to run it).
 4. Don't `npm install` for me unless I ask — I'll do that when I want to view it.
 
