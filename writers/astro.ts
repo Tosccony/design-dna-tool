@@ -146,6 +146,11 @@ const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {
     filename: 'MagneticButton.astro',
     template: magneticButtonTemplate(),
   },
+  'motion.cursor-follower': {
+    mode: 'component',
+    filename: 'CursorFollower.astro',
+    template: cursorFollowerTemplate(),
+  },
 };
 
 function textMaskRevealTemplate(): string {
@@ -451,6 +456,101 @@ const { strength = 0.35, class: className = '' } = Astro.props as Props;
         x(0);
         y(0);
       });
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
+`;
+}
+
+function cursorFollowerTemplate(): string {
+  // A small ring follows the cursor; scales 3× over interactive elements
+  // (a, button, [data-cursor="hover"]). mix-blend-mode: difference adapts
+  // contrast to whatever's underneath without the dev needing to track
+  // backgrounds. Wrapper/inner pattern keeps GSAP's x/y translate from
+  // fighting with the inner's translate(-50%, -50%) centering. Hidden on
+  // touch devices and when the user prefers reduced motion.
+  return `---
+// CursorFollower — bottom-mount fixed-position cursor ring tracking the
+// pointer with smoothed easing via gsap.quickTo. Two-element pattern:
+// outer .cursor-follower handles positioning, inner .cursor-follower-inner
+// handles scaling on hover so transforms don't collide.
+---
+
+<div class="cursor-follower" aria-hidden="true">
+  <div class="cursor-follower-inner"></div>
+</div>
+
+<style>
+  .cursor-follower {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 90;
+    width: 0;
+    height: 0;
+    will-change: transform;
+    opacity: 0;
+  }
+
+  .cursor-follower.is-active {
+    opacity: 1;
+  }
+
+  .cursor-follower-inner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    transform: translate(-50%, -50%);
+    color: white;
+    mix-blend-mode: difference;
+    will-change: transform;
+  }
+
+  /* No cursor to follow on touch devices */
+  @media (hover: none) {
+    .cursor-follower {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import gsap from 'gsap';
+
+  function init() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!window.matchMedia('(hover: hover)').matches) return;
+
+    const cursor = document.querySelector<HTMLElement>('.cursor-follower');
+    const inner = cursor?.querySelector<HTMLElement>('.cursor-follower-inner');
+    if (!cursor || !inner) return;
+    if (cursor.dataset.cfInitialized === '1') return;
+    cursor.dataset.cfInitialized = '1';
+
+    const x = gsap.quickTo(cursor, 'x', { duration: 0.3, ease: 'power3.out' });
+    const y = gsap.quickTo(cursor, 'y', { duration: 0.3, ease: 'power3.out' });
+    const scale = gsap.quickTo(inner, 'scale', { duration: 0.3, ease: 'power3.out' });
+
+    cursor.classList.add('is-active');
+
+    document.addEventListener('mousemove', (e) => {
+      x(e.clientX);
+      y(e.clientY);
+    });
+
+    const interactiveSelector = 'a, button, [data-cursor="hover"]';
+    document.addEventListener('mouseover', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest(interactiveSelector)) scale(3);
+    });
+    document.addEventListener('mouseout', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest(interactiveSelector)) scale(1);
     });
   }
 
