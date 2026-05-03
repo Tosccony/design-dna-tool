@@ -16,7 +16,7 @@ import * as path from 'node:path';
 import { parseArgs } from 'node:util';
 
 import type { DesignDNA } from '../presets';
-import { writeProject } from '../writers/nextjs';
+import { writers, availableFrameworks, isFramework } from '../writers';
 
 // ================================================================
 // Argument parsing
@@ -29,6 +29,7 @@ function parseCliArgs() {
         'out-dir':   { type: 'string' },
         'name':      { type: 'string' },
         'overwrite': { type: 'boolean' },
+        'framework': { type: 'string', short: 'f' },
         'help':      { type: 'boolean', short: 'h' },
       },
       allowPositionals: true,
@@ -52,6 +53,8 @@ Options:
   --out-dir <dir>   Override output directory (default: generated/<slug>)
   --name <slug>     Override the slug used for the output folder
   --overwrite       Overwrite an existing output directory
+  -f, --framework <n>  Target framework: nextjs (default)
+                       (more frameworks coming — astro next)
   -h, --help        Show this help
 
 Examples:
@@ -171,9 +174,17 @@ function main() {
   validateDna(parsed, dnaPath);
   const dna: DesignDNA = parsed;
 
+  // Framework selection
+  const framework = values.framework ?? 'nextjs';
+  if (!isFramework(framework)) {
+    fail(`Unknown framework: ${framework}. Available: ${availableFrameworks.join(', ')}`);
+  }
+  const writer = writers[framework];
+
   // Output directory
   const slug = values.name ?? slugFromPath(dnaPath);
-  const outDir = values['out-dir'] ?? path.join('generated', slug);
+  const defaultDirName = framework === 'nextjs' ? slug : `${slug}.${framework}`;
+  const outDir = values['out-dir'] ?? path.join('generated', defaultDirName);
 
   console.log(`→ Generating mockup`);
   console.log(`  DNA:    ${dnaPath}`);
@@ -183,7 +194,7 @@ function main() {
   // Generate
   let result;
   try {
-    result = writeProject({
+    result = writer({
       dna,
       outDir,
       overwrite: values.overwrite,
