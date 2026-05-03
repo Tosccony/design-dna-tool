@@ -36,6 +36,15 @@ export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
     );
   }
 
+  // Pre-flight: every motion primitive in the DNA needs an Astro template
+  // (or a layout-mode registration). Fail loudly before any files are
+  // written rather than emitting a half-built project that 404s on imports.
+  for (const id of dna.motionPrimitiveIds) {
+    if (!(id in ASTRO_PRIMITIVES)) {
+      throw new Error(`No Astro template for ${id}`);
+    }
+  }
+
   const compiled = compileDesignDNA(dna);
 
   if (fs.existsSync(outDir) && !overwrite) {
@@ -82,10 +91,62 @@ export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
   write('src/components/sections/Testimonial.astro', renderTestimonialSection());
   write('src/components/sections/Footer.astro', renderFooterSection(dna));
 
+  // Motion primitives — emit one .astro file per primitive in the DNA.
+  // Layout-mode primitives (page-transition) are registered in
+  // ASTRO_PRIMITIVES but emit no file; they're wired in Layout.astro by id.
+  emitMotionPrimitives(dna, write);
+
   // Pages
   write('src/pages/index.astro', renderIndexPage(dna, hasChrome));
 
   return { outDir, filesWritten };
+}
+
+// ================================================================
+// Motion primitive infrastructure
+// ================================================================
+
+type AstroPrimitiveMode = 'component' | 'layout';
+
+interface AstroPrimitive {
+  mode: AstroPrimitiveMode;
+  /** Component file name (e.g. 'TextMaskReveal.astro') — required for 'component' mode */
+  filename?: string;
+  /** Astro source — required for 'component' mode */
+  template?: string;
+}
+
+/**
+ * Per-primitive Astro implementations. Populated incrementally —
+ * each primitive ID maps to either a component file (most) or a
+ * layout-mode marker (page-transition, handled in Layout.astro).
+ *
+ * If the writer encounters a DNA primitive ID that isn't here, it
+ * throws "No Astro template for <id>" before writing anything.
+ * Better to fail fast than ship a mockup with broken imports.
+ */
+const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {};
+
+function emitMotionPrimitives(
+  dna: DesignDNA,
+  write: (relativePath: string, content: string) => void
+): void {
+  for (const id of dna.motionPrimitiveIds) {
+    const primitive = ASTRO_PRIMITIVES[id];
+    // Pre-flight already validated every id is registered, but TS narrows
+    // through the lookup so this assertion is for readers, not the runtime.
+    if (!primitive) continue;
+    if (primitive.mode === 'component') {
+      if (!primitive.filename || !primitive.template) {
+        throw new Error(
+          `Component primitive "${id}" must declare filename and template`
+        );
+      }
+      write(`src/components/primitives/${primitive.filename}`, primitive.template);
+    }
+    // mode === 'layout': nothing to emit; Layout.astro reads motionIds
+    // and wires the layout-level component (e.g. <ClientRouter />).
+  }
 }
 
 // ================================================================
