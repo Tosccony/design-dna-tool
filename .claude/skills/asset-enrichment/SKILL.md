@@ -10,10 +10,12 @@ The recipe for taking a generated mockup from placeholder images to on-DNA image
 ## When to use
 
 - Inline at the end of `/new-mockup`, after the writer has run and the user wants imagery before viewing the mockup.
-- Standalone via `/enrich <slug>` for an already-generated mockup that needs imagery (or re-imagery).
-- Whenever the user asks for "real images" or to "replace placeholders" inside `generated/<slug>/`.
+- Standalone via `/enrich <slug>` for an already-generated mockup that needs imagery (or re-imagery). Astro mockups have a `.astro` suffix on their slug directory (e.g., `/enrich atelier-house.astro` → `generated/atelier-house.astro/`).
+- Whenever the user asks for "real images" or to "replace placeholders" inside `generated/<slug>/` or `generated/<slug>.astro/`.
 
-Don't use for: copy generation (not handled by this skill), CSS `background-image` references, or anything outside `generated/<slug>/`.
+Don't use for: copy generation (not handled by this skill), CSS `background-image` references, or anything outside the mockup directory.
+
+**Framework detection.** The discovery pass globs both Next.js (`.tsx`, `.ts`) and Astro (`.astro`) source files in one walk, so you don't need to detect upfront. If you do need to know — for path messages or stack notes — the simplest signal is the directory suffix: `<slug>.astro/` means Astro, otherwise Next.js. Both frameworks store images at `public/images/<filename>`, so output paths are identical.
 
 ## Prerequisites
 
@@ -60,13 +62,19 @@ If the user invoked `/enrich <slug> <scope> <mode>` with positional args, skip t
 
 Generated mockups reference images in two shapes, and discovery must catch both:
 
-**A) JSX shape** (typically heroes):
+**A) JSX/HTML shape** (typically heroes):
 
 ```tsx
+// Next.js
 <Image src="/images/hero.png" alt="..." fill ... />
 ```
 
-**B) Data-array shape** (service grids, work rosters, etc.):
+```astro
+<!-- Astro -->
+<img src="/images/hero.png" alt="..." class="..." />
+```
+
+**B) Data-array shape** (service grids, work rosters, etc.) — identical syntax in both frameworks since the const declaration lives in JS/TS body or Astro frontmatter:
 
 ```ts
 const services = [
@@ -76,7 +84,7 @@ const services = [
 
 A single regex against either shape alone misses the other. Instead, do a two-pass walk:
 
-1. **First-pass grep** for `/images/[A-Za-z0-9._-]+` across `generated/<slug>/**/*.tsx` and `generated/<slug>/**/*.ts`, **excluding** `node_modules/`, `.next/`, and `public/`. The broad glob (not just `components/sections/**` and `app/**/page.tsx`) catches future mockups that put image data in `lib/` or other helper modules. The literal-path regex captures every reference regardless of shape.
+1. **First-pass grep** for `/images/[A-Za-z0-9._-]+` across `generated/<slug>/**/*.tsx`, `generated/<slug>/**/*.ts`, and `generated/<slug>/**/*.astro` (or `generated/<slug>.astro/**/*.astro` when the user invoked with the Astro slug), **excluding** `node_modules/`, `.next/`, `dist/`, `.astro/`, and `public/`. The broad glob (not just `components/sections/**` and `app/**/page.tsx`) catches future mockups that put image data in `lib/` or other helper modules. The literal-path regex captures every reference regardless of shape or framework.
 2. **For each match**, read 3–5 lines of context around the `src` reference and find the corresponding alt:
    - JSX shape: an `alt="..."` attribute on the same element.
    - Data-array shape: an `alt:` sibling key inside the same object literal.
