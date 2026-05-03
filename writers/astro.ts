@@ -284,9 +284,81 @@ function renderApproachSection(): string {
 }
 
 function renderWorkSection(): string {
-  return `<section class="work">
-  <h2>Work — placeholder</h2>
+  // Two-part section: an eyebrow lead-in, then a horizontal-scrolling track
+  // of full-screen work articles. In Phase 3 the track is a native
+  // overflow-x-auto container — the same shape `motion.horizontal-gallery`
+  // falls back to under prefers-reduced-motion. Phase 4 wraps the track
+  // in <HorizontalGallery> to add GSAP pinned scrolling.
+  return `---
+const works = [
+  {
+    id: '01',
+    name: 'Larkspur Residence',
+    location: 'Larkspur, CA',
+    year: '2025',
+    image: {
+      src: '/images/work-01-larkspur.png',
+      alt: 'Long single-story residence with horizontal cedar siding and a low-pitched copper roof, sited on a Larkspur ridgeline, photographed in soft late-afternoon light with native grasses in the foreground',
+    },
+  },
+  {
+    id: '02',
+    name: 'Studio in the Woods',
+    location: 'Sonoma, CA',
+    year: '2024',
+    image: {
+      src: '/images/work-02-studio.png',
+      alt: 'Compact glass-and-timber studio nestled among Sonoma redwoods, soft morning fog, the structure barely separating itself from the trees',
+    },
+  },
+  {
+    id: '03',
+    name: 'House on the Bluff',
+    location: 'Mendocino, CA',
+    year: '2024',
+    image: {
+      src: '/images/work-03-bluff.png',
+      alt: 'Mendocino coastal residence on a windswept bluff, charcoal-stained shou-sugi-ban siding, the ocean horizon visible past the home under overcast diffuse light',
+    },
+  },
+  {
+    id: '04',
+    name: 'Hillside Compound',
+    location: 'Marin, CA',
+    year: '2023',
+    image: {
+      src: '/images/work-04-hillside.png',
+      alt: 'Modern Marin compound stepping down a hillside in three connected volumes, board-formed concrete and weathered steel, dusk light coming from the west',
+    },
+  },
+];
+---
+
+<section class="px-6 lg:px-12 pt-32 pb-12">
+  <span class="eyebrow mb-8 block">Selected homes</span>
+  <p class="text-lead text-ink-muted max-w-2xl">
+    A handful of recent residences. Scroll right to walk through.
+  </p>
 </section>
+
+<div class="flex overflow-x-auto">
+  {works.map((w) => (
+    <article class="relative w-screen h-screen flex-shrink-0 overflow-hidden border-l border-border first:border-l-0 bg-gradient-to-br from-surface-alt via-surface to-border">
+      <img
+        src={w.image.src}
+        alt={w.image.alt}
+        class="absolute inset-0 h-full w-full object-cover"
+      />
+
+      <div class="relative z-10 h-full flex flex-col justify-end p-12 lg:p-20">
+        <span class="eyebrow text-ink-subtle mb-4 block">
+          {w.location} &middot; {w.year}
+        </span>
+        <span class="display text-h2 text-ink block drop-shadow-sm">{w.name}</span>
+      </div>
+    </article>
+  ))}
+</div>
 `;
 }
 
