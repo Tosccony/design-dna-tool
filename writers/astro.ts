@@ -141,6 +141,11 @@ const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {
     filename: 'HorizontalGallery.astro',
     template: horizontalGalleryTemplate(),
   },
+  'motion.magnetic-button': {
+    mode: 'component',
+    filename: 'MagneticButton.astro',
+    template: magneticButtonTemplate(),
+  },
 };
 
 function textMaskRevealTemplate(): string {
@@ -405,6 +410,55 @@ function horizontalGalleryTemplate(): string {
 `;
 }
 
+function magneticButtonTemplate(): string {
+  // Button drifts toward the cursor using gsap.quickTo (the framework-
+  // agnostic equivalent of Framer Motion's useSpring on x/y). strength
+  // controls the displacement ratio — 0.35 means the button moves 35% of
+  // the cursor's offset from the button's center. Snaps back on
+  // mouseleave. No-op for prefers-reduced-motion users.
+  return `---
+interface Props {
+  strength?: number;
+  class?: string;
+}
+const { strength = 0.35, class: className = '' } = Astro.props as Props;
+---
+
+<button class:list={['magnetic-btn', className]} data-strength={strength}>
+  <slot />
+</button>
+
+<script>
+  import gsap from 'gsap';
+
+  function init() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    document.querySelectorAll<HTMLButtonElement>('.magnetic-btn').forEach((btn) => {
+      if (btn.dataset.mbInitialized === '1') return;
+      btn.dataset.mbInitialized = '1';
+
+      const s = Number(btn.dataset.strength ?? 0.35);
+      const x = gsap.quickTo(btn, 'x', { duration: 0.5, ease: 'power3.out' });
+      const y = gsap.quickTo(btn, 'y', { duration: 0.5, ease: 'power3.out' });
+
+      btn.addEventListener('mousemove', (e) => {
+        const r = btn.getBoundingClientRect();
+        x((e.clientX - r.left - r.width / 2) * s);
+        y((e.clientY - r.top - r.height / 2) * s);
+      });
+      btn.addEventListener('mouseleave', () => {
+        x(0);
+        y(0);
+      });
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
+`;
+}
+
 function emitMotionPrimitives(
   dna: DesignDNA,
   write: (relativePath: string, content: string) => void
@@ -599,6 +653,7 @@ function renderHeroSection(dna: DesignDNA): string {
   const client = dna.client;
   return `---
 import TextMaskReveal from '../primitives/TextMaskReveal.astro';
+import MagneticButton from '../primitives/MagneticButton.astro';
 
 const hero = {
   src: '/images/hero.png',
@@ -622,9 +677,9 @@ const hero = {
       A small studio designing and building considered residences on the Northern California coast.
     </p>
     <div class="mt-12">
-      <button class="bg-ink text-background px-8 py-4 rounded-full text-base font-medium">
+      <MagneticButton class="bg-ink text-background px-8 py-4 rounded-full text-base font-medium">
         Begin a project &rarr;
-      </button>
+      </MagneticButton>
     </div>
   </div>
 </section>
