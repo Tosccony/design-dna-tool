@@ -136,6 +136,11 @@ const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {
     filename: 'Preloader.astro',
     template: preloaderTemplate(),
   },
+  'motion.horizontal-gallery': {
+    mode: 'component',
+    filename: 'HorizontalGallery.astro',
+    template: horizontalGalleryTemplate(),
+  },
 };
 
 function textMaskRevealTemplate(): string {
@@ -322,6 +327,77 @@ function preloaderTemplate(): string {
       duration: 1.0,
       ease: 'expo.inOut',
     }, '+=0.2');
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
+`;
+}
+
+function horizontalGalleryTemplate(): string {
+  // Pinned horizontal scroll: GSAP ScrollTrigger pins the section while
+  // vertical scroll progress translates the inner track horizontally. Falls
+  // back to native overflow-x scroll for prefers-reduced-motion (and as the
+  // pre-JS visual). invalidateOnRefresh recomputes on resize.
+  return `---
+// HorizontalGallery — pinned scroll-driven horizontal track. Slot
+// children should be flex-shrink-0 full-viewport-width articles.
+---
+
+<div class="horizontal-gallery">
+  <div class="horizontal-gallery-track">
+    <slot />
+  </div>
+</div>
+
+<style>
+  /* Pre-JS / reduced-motion fallback: native horizontal scrollbar */
+  .horizontal-gallery {
+    overflow-x: auto;
+  }
+  .horizontal-gallery-track {
+    display: flex;
+  }
+
+  /* Once JS engages we hide the scrollbar — vertical scroll drives motion */
+  .horizontal-gallery.is-engaged {
+    overflow-x: hidden;
+  }
+</style>
+
+<script>
+  import gsap from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  function init() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const galleries = document.querySelectorAll<HTMLElement>('.horizontal-gallery');
+    galleries.forEach((gallery) => {
+      if (gallery.dataset.hgInitialized === '1') return;
+      gallery.dataset.hgInitialized = '1';
+
+      const track = gallery.querySelector<HTMLElement>('.horizontal-gallery-track');
+      if (!track) return;
+
+      gallery.classList.add('is-engaged');
+
+      const totalScroll = () => Math.max(0, track.scrollWidth - window.innerWidth);
+
+      gsap.to(track, {
+        x: () => -totalScroll(),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: gallery,
+          pin: true,
+          scrub: 1,
+          start: 'top top',
+          end: () => \`+=\${totalScroll()}\`,
+          invalidateOnRefresh: true,
+        },
+      });
+    });
   }
 
   document.addEventListener('astro:page-load', init);
@@ -612,6 +688,8 @@ function renderWorkSection(): string {
   // falls back to under prefers-reduced-motion. Phase 4 wraps the track
   // in <HorizontalGallery> to add GSAP pinned scrolling.
   return `---
+import HorizontalGallery from '../primitives/HorizontalGallery.astro';
+
 const works = [
   {
     id: '01',
@@ -663,7 +741,7 @@ const works = [
   </p>
 </section>
 
-<div class="flex overflow-x-auto">
+<HorizontalGallery>
   {works.map((w) => (
     <article class="relative w-screen h-screen flex-shrink-0 overflow-hidden border-l border-border first:border-l-0 bg-gradient-to-br from-surface-alt via-surface to-border">
       <img
@@ -680,7 +758,7 @@ const works = [
       </div>
     </article>
   ))}
-</div>
+</HorizontalGallery>
 `;
 }
 
