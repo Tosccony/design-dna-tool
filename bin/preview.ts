@@ -321,11 +321,11 @@ const PAGE_STYLES = `    :root {
       color: var(--ink);
     }
 
-    /* Color swatches — edge-to-edge, swatchbook style */
+    /* Color swatches — edge-to-edge, swatchbook style (5 per row × 2 rows) */
     .swatches {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: nowrap;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
       border-radius: 4px;
       overflow: hidden;
       border: 1px solid var(--border);
@@ -333,25 +333,21 @@ const PAGE_STYLES = `    :root {
     }
 
     .swatch {
-      flex: 1 1 0;
       min-width: 0;
-      height: 84px;
-      padding: 0.4rem 0.5rem;
+      height: 100px;
+      padding: 0.65rem 0.75rem;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      gap: 0.1rem;
+      gap: 0.3rem;
       overflow: hidden;
-      font-size: 0.625rem;
-      line-height: 1.25;
+      font-size: 0.6875rem;
+      line-height: 1.3;
     }
 
     .swatch-role {
       font-weight: 600;
       letter-spacing: -0.005em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     .swatch-hex {
