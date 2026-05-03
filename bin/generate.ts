@@ -53,8 +53,7 @@ Options:
   --out-dir <dir>   Override output directory (default: generated/<slug>)
   --name <slug>     Override the slug used for the output folder
   --overwrite       Overwrite an existing output directory
-  -f, --framework <n>  Target framework: nextjs (default)
-                       (more frameworks coming — astro next)
+  -f, --framework <name>  Target framework: nextjs (default)
   -h, --help        Show this help
 
 Examples:

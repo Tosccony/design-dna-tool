@@ -28,24 +28,13 @@ import * as path from 'node:path';
 
 import type { DesignDNA } from '../presets';
 import { compileDesignDNA, type CompiledDNA } from '../compiler';
+import type { WriteProjectOptions, WriteProjectResult } from './index';
 
 // ================================================================
 // Public API
 // ================================================================
 
-export interface WriteOptions {
-  dna: DesignDNA;
-  outDir: string;
-  /** If true, overwrite an existing outDir. Default: false. */
-  overwrite?: boolean;
-}
-
-export interface WriteResult {
-  outDir: string;
-  filesWritten: string[];
-}
-
-export function writeProject(opts: WriteOptions): WriteResult {
+export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
   const { dna, outDir, overwrite = false } = opts;
   const compiled = compileDesignDNA(dna);
 
