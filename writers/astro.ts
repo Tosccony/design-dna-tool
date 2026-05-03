@@ -65,8 +65,25 @@ export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
   const motionIds = new Set(compiled.resolved.motion.map((m) => m.id));
   write('src/layouts/Layout.astro', renderLayout(dna, compiled.fonts, motionIds));
 
+  // Site-wide chrome wrapper for page-level motion mounts (preloader,
+  // cursor-follower). Page-transition is layout-mode and already wired in
+  // Layout.astro via <ClientRouter />. Emit only when at least one of the
+  // chrome primitives is present in the DNA.
+  const hasChrome =
+    motionIds.has('motion.preloader') || motionIds.has('motion.cursor-follower');
+  if (hasChrome) {
+    write('src/components/Chrome.astro', renderChrome(motionIds));
+  }
+
+  // Section components (cinematic-gallery layout)
+  write('src/components/sections/Hero.astro', renderHeroSection(dna));
+  write('src/components/sections/Approach.astro', renderApproachSection());
+  write('src/components/sections/Work.astro', renderWorkSection());
+  write('src/components/sections/Testimonial.astro', renderTestimonialSection());
+  write('src/components/sections/Footer.astro', renderFooterSection(dna));
+
   // Pages
-  write('src/pages/index.astro', renderIndexPage(dna));
+  write('src/pages/index.astro', renderIndexPage(dna, hasChrome));
 
   return { outDir, filesWritten };
 }
@@ -163,19 +180,96 @@ function renderGlobalCss(themeCss: string): string {
   return themeCss + '\n';
 }
 
-function renderIndexPage(dna: DesignDNA): string {
-  // v1 stub — sections land in Phase 3. Renders the project name in the
-  // display family on the color preset's background, which proves the
-  // theme + font wiring resolves end-to-end.
+function renderIndexPage(dna: DesignDNA, hasChrome: boolean): string {
+  // Composes the cinematic-gallery sections inside Layout. Chrome wraps the
+  // <main> when the DNA includes preloader / cursor-follower (those mount
+  // as siblings to page content). Sections themselves are imported from
+  // src/components/sections/*.astro.
+  const chromeImport = hasChrome
+    ? `import Chrome from '../components/Chrome.astro';\n`
+    : '';
+  const openChrome = hasChrome ? '<Chrome>\n    ' : '';
+  const closeChrome = hasChrome ? '\n  </Chrome>' : '';
+
   return `---
-import Layout from '../layouts/Layout.astro';
+${chromeImport}import Layout from '../layouts/Layout.astro';
+import Hero from '../components/sections/Hero.astro';
+import Approach from '../components/sections/Approach.astro';
+import Work from '../components/sections/Work.astro';
+import Testimonial from '../components/sections/Testimonial.astro';
+import Footer from '../components/sections/Footer.astro';
 ---
 
-<Layout>
-  <main class="min-h-screen flex items-center justify-center px-6">
-    <h1 class="display text-h1 text-ink text-center">${dna.projectName}</h1>
-  </main>
+<Layout title=${JSON.stringify(dna.projectName)}>
+  ${openChrome}<main>
+      <Hero />
+      <Approach />
+      <Work />
+      <Testimonial />
+      <Footer />
+    </main>${closeChrome}
 </Layout>
+`;
+}
+
+function renderChrome(_motionIds: Set<string>): string {
+  // Mounts site-wide motion primitives that sit alongside page content
+  // (preloader, cursor-follower). Page-transition is wired in Layout.astro.
+  // In Phase 3 the slot passes through unchanged; primitive imports + mounts
+  // land in Phase 4 as the GSAP implementations come online.
+  return `---
+// Site chrome — mounts page-level motion primitives that wrap or sit
+// alongside <main>. Imports populate as motion primitives become available.
+---
+
+<slot />
+`;
+}
+
+// ================================================================
+// Section renderers — cinematic-gallery layout
+// ================================================================
+//
+// Each section is a self-contained .astro component imported from
+// src/pages/index.astro. Section content is hardcoded for the v1 mockup
+// shape; future iteration would lift it to props or a content collection.
+//
+// Phase 3 emits structural HTML only — motion primitive wrappers
+// (TextMaskReveal, MagneticButton, HorizontalGallery) land in Phase 4 and
+// re-emit each affected section.
+
+function renderHeroSection(_dna: DesignDNA): string {
+  return `<section class="hero">
+  <h1>Hero — placeholder</h1>
+</section>
+`;
+}
+
+function renderApproachSection(): string {
+  return `<section class="approach">
+  <h2>Approach — placeholder</h2>
+</section>
+`;
+}
+
+function renderWorkSection(): string {
+  return `<section class="work">
+  <h2>Work — placeholder</h2>
+</section>
+`;
+}
+
+function renderTestimonialSection(): string {
+  return `<section class="testimonial">
+  <h2>Testimonial — placeholder</h2>
+</section>
+`;
+}
+
+function renderFooterSection(_dna: DesignDNA): string {
+  return `<footer>
+  <p>Footer — placeholder</p>
+</footer>
 `;
 }
 
