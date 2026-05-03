@@ -151,6 +151,12 @@ const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {
     filename: 'CursorFollower.astro',
     template: cursorFollowerTemplate(),
   },
+  // Layout-mode primitive: no component file emitted. Layout.astro reads
+  // motionIds and conditionally renders <ClientRouter /> from astro:transitions
+  // in <head>, which is the canonical place for view-transition wiring.
+  'motion.page-transition': {
+    mode: 'layout',
+  },
 };
 
 function textMaskRevealTemplate(): string {
@@ -165,7 +171,7 @@ interface Props {
   as?: string;
   class?: string;
 }
-const { as: Tag = 'h1', class: className = '' } = Astro.props as Props;
+const { as: Tag = 'h1', class: className = '' } = Astro.props;
 ---
 
 <Tag class:list={['text-mask-reveal', className]}>
@@ -426,7 +432,7 @@ interface Props {
   strength?: number;
   class?: string;
 }
-const { strength = 0.35, class: className = '' } = Astro.props as Props;
+const { strength = 0.35, class: className = '' } = Astro.props;
 ---
 
 <button class:list={['magnetic-btn', className]} data-strength={strength}>
