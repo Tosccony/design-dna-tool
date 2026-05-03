@@ -238,9 +238,40 @@ function renderChrome(_motionIds: Set<string>): string {
 // (TextMaskReveal, MagneticButton, HorizontalGallery) land in Phase 4 and
 // re-emit each affected section.
 
-function renderHeroSection(_dna: DesignDNA): string {
-  return `<section class="hero">
-  <h1>Hero — placeholder</h1>
+function renderHeroSection(dna: DesignDNA): string {
+  // Full-bleed cinematic hero. Background image lands at /images/hero.png
+  // when /enrich runs; until then, the gradient fallback keeps the
+  // composition readable. Eyebrow + display headline + lead + CTA pinned
+  // to bottom-left so the image breathes through the top two-thirds.
+  const client = dna.client;
+  return `---
+const hero = {
+  src: '/images/hero.png',
+  alt: 'A long modern custom home with a cantilevered roof and floor-to-ceiling glazing, set against a Northern California hillside at golden hour, mature oaks framing the entrance',
+};
+---
+
+<section class="relative h-screen w-full overflow-hidden bg-gradient-to-br from-surface-alt via-surface to-border">
+  <img
+    src={hero.src}
+    alt={hero.alt}
+    class="absolute inset-0 h-full w-full object-cover"
+  />
+
+  <div class="relative z-10 flex h-full flex-col justify-end px-6 lg:px-12 pb-16">
+    <span class="eyebrow text-ink-muted mb-6 block">${client}</span>
+    <h1 class="display text-display text-ink max-w-5xl">
+      Custom homes built without compromise.
+    </h1>
+    <p class="mt-8 text-lead text-ink-muted max-w-2xl">
+      A small studio designing and building considered residences on the Northern California coast.
+    </p>
+    <div class="mt-12">
+      <button class="bg-ink text-background px-8 py-4 rounded-full text-base font-medium">
+        Begin a project &rarr;
+      </button>
+    </div>
+  </div>
 </section>
 `;
 }
