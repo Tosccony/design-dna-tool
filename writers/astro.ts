@@ -125,7 +125,118 @@ interface AstroPrimitive {
  * throws "No Astro template for <id>" before writing anything.
  * Better to fail fast than ship a mockup with broken imports.
  */
-const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {};
+const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {
+  'motion.text-mask-reveal': {
+    mode: 'component',
+    filename: 'TextMaskReveal.astro',
+    template: textMaskRevealTemplate(),
+  },
+};
+
+function textMaskRevealTemplate(): string {
+  // Hand-rolled line-splitter (no GSAP SplitText dep — keeps free-tier
+  // GSAP sufficient). The component takes any element type via `as` and
+  // wraps each rendered line in an overflow-hidden mask + inner span,
+  // then animates the inner spans up from yPercent 110 on scroll-into-view.
+  // Idempotent via data-tmr-initialized so re-firing on view-transition
+  // navigation doesn't double-wrap.
+  return `---
+interface Props {
+  as?: string;
+  class?: string;
+}
+const { as: Tag = 'h1', class: className = '' } = Astro.props as Props;
+---
+
+<Tag class:list={['text-mask-reveal', className]}>
+  <slot />
+</Tag>
+
+<script>
+  import gsap from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  function escapeHtml(s: string): string {
+    return s.replace(/[&<>"]/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c
+    ));
+  }
+
+  function splitIntoLines(el: HTMLElement): HTMLElement[] {
+    const text = (el.textContent ?? '').trim();
+    const words = text.split(/\\s+/);
+
+    el.innerHTML = words
+      .map((w) => \`<span class="word" style="display:inline-block">\${escapeHtml(w)}&nbsp;</span>\`)
+      .join('');
+
+    const wordEls = Array.from(el.querySelectorAll<HTMLElement>('.word'));
+    const lineGroups: HTMLElement[][] = [];
+    let currentTop = -1;
+    let currentGroup: HTMLElement[] = [];
+
+    for (const word of wordEls) {
+      if (word.offsetTop !== currentTop) {
+        if (currentGroup.length) lineGroups.push(currentGroup);
+        currentGroup = [];
+        currentTop = word.offsetTop;
+      }
+      currentGroup.push(word);
+    }
+    if (currentGroup.length) lineGroups.push(currentGroup);
+
+    el.innerHTML = '';
+    const innerSpans: HTMLElement[] = [];
+
+    for (const group of lineGroups) {
+      const mask = document.createElement('span');
+      mask.style.display = 'block';
+      mask.style.overflow = 'hidden';
+
+      const inner = document.createElement('span');
+      inner.style.display = 'block';
+      inner.textContent = group.map((w) => w.textContent).join('').replace(/\\u00A0+$/, '');
+
+      mask.appendChild(inner);
+      el.appendChild(mask);
+      innerSpans.push(inner);
+    }
+
+    return innerSpans;
+  }
+
+  function init() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const targets = document.querySelectorAll<HTMLElement>('.text-mask-reveal');
+    if (!targets.length) return;
+
+    document.fonts.ready.then(() => {
+      targets.forEach((el) => {
+        if (el.dataset.tmrInitialized === '1') return;
+        el.dataset.tmrInitialized = '1';
+
+        const lines = splitIntoLines(el);
+        gsap.from(lines, {
+          yPercent: 110,
+          duration: 1.1,
+          stagger: 0.08,
+          ease: 'expo.out',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 85%',
+            once: true,
+          },
+        });
+      });
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
+`;
+}
 
 function emitMotionPrimitives(
   dna: DesignDNA,
@@ -306,6 +417,8 @@ function renderHeroSection(dna: DesignDNA): string {
   // to bottom-left so the image breathes through the top two-thirds.
   const client = dna.client;
   return `---
+import TextMaskReveal from '../primitives/TextMaskReveal.astro';
+
 const hero = {
   src: '/images/hero.png',
   alt: 'A long modern custom home with a cantilevered roof and floor-to-ceiling glazing, set against a Northern California hillside at golden hour, mature oaks framing the entrance',
@@ -321,9 +434,9 @@ const hero = {
 
   <div class="relative z-10 flex h-full flex-col justify-end px-6 lg:px-12 pb-16">
     <span class="eyebrow text-ink-muted mb-6 block">${client}</span>
-    <h1 class="display text-display text-ink max-w-5xl">
+    <TextMaskReveal as="h1" class="display text-display text-ink max-w-5xl">
       Custom homes built without compromise.
-    </h1>
+    </TextMaskReveal>
     <p class="mt-8 text-lead text-ink-muted max-w-2xl">
       A small studio designing and building considered residences on the Northern California coast.
     </p>
@@ -343,6 +456,8 @@ function renderApproachSection(): string {
   // three-card pattern. Each column leads with a numbered eyebrow and
   // sits behind a top border to read like a typographic ledger.
   return `---
+import TextMaskReveal from '../primitives/TextMaskReveal.astro';
+
 const services = [
   {
     id: '01',
@@ -367,9 +482,9 @@ const services = [
 
 <section class="px-6 lg:px-12 py-40 border-t border-border">
   <span class="eyebrow mb-12 block">Approach</span>
-  <h2 class="display text-h2 text-ink max-w-4xl">
+  <TextMaskReveal as="h2" class="display text-h2 text-ink max-w-4xl">
     We design and build a small number of homes each year, every one held to the same standard from the foundation to the last detail.
-  </h2>
+  </TextMaskReveal>
 
   <div class="mt-32 grid grid-cols-12 gap-8">
     {services.map((s) => (
@@ -465,11 +580,15 @@ const works = [
 }
 
 function renderTestimonialSection(): string {
-  return `<section class="px-6 lg:px-12 py-40 border-t border-border">
+  return `---
+import TextMaskReveal from '../primitives/TextMaskReveal.astro';
+---
+
+<section class="px-6 lg:px-12 py-40 border-t border-border">
   <span class="eyebrow mb-12 block">In their words</span>
-  <blockquote class="display text-h2 text-ink max-w-5xl">
+  <TextMaskReveal as="blockquote" class="display text-h2 text-ink max-w-5xl">
     &ldquo;We expected a house. They built a home &mdash; every detail handled with the kind of attention you only see in books.&rdquo;
-  </blockquote>
+  </TextMaskReveal>
   <div class="mt-12 flex flex-wrap items-baseline gap-x-8 gap-y-2">
     <span class="display text-h4 text-ink">— The Lindgren Family</span>
     <span class="eyebrow text-ink-subtle">Larkspur Residence, 2025</span>
