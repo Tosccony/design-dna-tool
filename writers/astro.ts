@@ -65,6 +65,9 @@ export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
   const motionIds = new Set(compiled.resolved.motion.map((m) => m.id));
   write('src/layouts/Layout.astro', renderLayout(dna, compiled.fonts, motionIds));
 
+  // Pages
+  write('src/pages/index.astro', renderIndexPage(dna));
+
   return { outDir, filesWritten };
 }
 
@@ -109,8 +112,13 @@ function renderPackageJson(dna: DesignDNA): string {
 }
 
 function renderAstroConfig(): string {
-  return `// @ts-check
-import { defineConfig } from 'astro/config';
+  // Note: no `// @ts-check` directive. @tailwindcss/vite >=4.2 transitively
+  // pulls vite 8, while Astro 5 pins vite 6 — the two Vite type
+  // declarations have incompatible Plugin signatures (hotUpdate hook). The
+  // runtime works fine; this only affects type-checking of the config file
+  // itself. Astro's own integration docs ship this example without
+  // @ts-check, so we follow suit. Page components are still strict.
+  return `import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
@@ -153,6 +161,22 @@ function renderGlobalCss(themeCss: string): string {
   // Astro project consumes that output unchanged — Tailwind v4's CSS-first
   // config is framework-agnostic, so no fork is needed.
   return themeCss + '\n';
+}
+
+function renderIndexPage(dna: DesignDNA): string {
+  // v1 stub — sections land in Phase 3. Renders the project name in the
+  // display family on the color preset's background, which proves the
+  // theme + font wiring resolves end-to-end.
+  return `---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+  <main class="min-h-screen flex items-center justify-center px-6">
+    <h1 class="display text-h1 text-ink text-center">${dna.projectName}</h1>
+  </main>
+</Layout>
+`;
 }
 
 function renderLayout(
