@@ -131,6 +131,11 @@ const ASTRO_PRIMITIVES: Record<string, AstroPrimitive> = {
     filename: 'TextMaskReveal.astro',
     template: textMaskRevealTemplate(),
   },
+  'motion.preloader': {
+    mode: 'component',
+    filename: 'Preloader.astro',
+    template: preloaderTemplate(),
+  },
 };
 
 function textMaskRevealTemplate(): string {
@@ -231,6 +236,92 @@ const { as: Tag = 'h1', class: className = '' } = Astro.props as Props;
         });
       });
     });
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
+`;
+}
+
+function preloaderTemplate(): string {
+  // First-paint reveal: counter ticks 000 → 100 over ~2.4s, then the
+  // overlay wipes upward off the viewport. Persists across view-transition
+  // navigations via transition:persist; sessionStorage gates re-fire so it
+  // only plays once per browser session. Honors prefers-reduced-motion by
+  // skipping the animation entirely (overlay hidden immediately).
+  return `---
+// Preloader — fixed full-bleed overlay with a tabular-numeric counter
+// pinned to bottom-right. Driven by a GSAP timeline; gated by
+// sessionStorage so it only runs on the first page of a session.
+---
+
+<div class="preloader" transition:persist>
+  <div class="preloader-counter">000</div>
+</div>
+
+<style>
+  .preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: var(--color-background);
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    pointer-events: none;
+  }
+
+  .preloader-counter {
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 12vw, 12rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
+<script>
+  import gsap from 'gsap';
+
+  function init() {
+    const overlay = document.querySelector<HTMLElement>('.preloader');
+    const counter = document.querySelector<HTMLElement>('.preloader-counter');
+    if (!overlay || !counter) return;
+
+    if (sessionStorage.getItem('preloaderShown') === '1') {
+      overlay.style.display = 'none';
+      return;
+    }
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      overlay.style.display = 'none';
+      sessionStorage.setItem('preloaderShown', '1');
+      return;
+    }
+
+    const counterValue = { v: 0 };
+    const tl = gsap.timeline({
+      onComplete: () => {
+        sessionStorage.setItem('preloaderShown', '1');
+      },
+    });
+
+    tl.to(counterValue, {
+      v: 100,
+      duration: 2.4,
+      ease: 'power2.inOut',
+      onUpdate: () => {
+        counter.textContent = String(Math.floor(counterValue.v)).padStart(3, '0');
+      },
+    });
+    tl.to(overlay, {
+      yPercent: -100,
+      duration: 1.0,
+      ease: 'expo.inOut',
+    }, '+=0.2');
   }
 
   document.addEventListener('astro:page-load', init);
@@ -384,17 +475,31 @@ import Footer from '../components/sections/Footer.astro';
 `;
 }
 
-function renderChrome(_motionIds: Set<string>): string {
+function renderChrome(motionIds: Set<string>): string {
   // Mounts site-wide motion primitives that sit alongside page content
-  // (preloader, cursor-follower). Page-transition is wired in Layout.astro.
-  // In Phase 3 the slot passes through unchanged; primitive imports + mounts
-  // land in Phase 4 as the GSAP implementations come online.
-  return `---
-// Site chrome — mounts page-level motion primitives that wrap or sit
-// alongside <main>. Imports populate as motion primitives become available.
----
+  // (preloader, cursor-follower). Page-transition is wired in Layout.astro
+  // because <ClientRouter /> belongs in <head>, not in body chrome.
+  const hasPreloader = motionIds.has('motion.preloader');
+  const hasCursor = motionIds.has('motion.cursor-follower');
 
-<slot />
+  const imports: string[] = [];
+  const mounts: string[] = [];
+  if (hasPreloader) {
+    imports.push(`import Preloader from './primitives/Preloader.astro';`);
+    mounts.push('<Preloader />');
+  }
+  if (hasCursor) {
+    imports.push(`import CursorFollower from './primitives/CursorFollower.astro';`);
+    mounts.push('<CursorFollower />');
+  }
+
+  const importBlock = imports.length ? imports.join('\n') + '\n' : '';
+  const mountBlock = mounts.length ? mounts.join('\n') + '\n\n' : '';
+
+  return `---
+${importBlock}---
+
+${mountBlock}<slot />
 `;
 }
 
