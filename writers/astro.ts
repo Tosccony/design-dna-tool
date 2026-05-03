@@ -17,7 +17,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { DesignDNA } from '../presets';
-import { compileDesignDNA } from '../compiler';
+import { compileDesignDNA, type CompiledDNA } from '../compiler';
 import type { WriteProjectOptions, WriteProjectResult } from './index';
 
 // ================================================================
@@ -60,7 +60,10 @@ export function writeProject(opts: WriteProjectOptions): WriteProjectResult {
   write('src/env.d.ts', renderEnvDts());
   write('.gitignore', renderGitignore());
 
-  void compiled;
+  // Theme + layout
+  write('src/styles/global.css', renderGlobalCss(compiled.themeCss));
+  const motionIds = new Set(compiled.resolved.motion.map((m) => m.id));
+  write('src/layouts/Layout.astro', renderLayout(dna, compiled.fonts, motionIds));
 
   return { outDir, filesWritten };
 }
@@ -137,5 +140,75 @@ dist/
 .astro/
 .env
 .DS_Store
+`;
+}
+
+// ================================================================
+// Theme + layout renderers
+// ================================================================
+
+function renderGlobalCss(themeCss: string): string {
+  // The compiler already opens with `@import "tailwindcss";` and emits the
+  // full @theme block, body defaults, and reduced-motion override. The
+  // Astro project consumes that output unchanged — Tailwind v4's CSS-first
+  // config is framework-agnostic, so no fork is needed.
+  return themeCss + '\n';
+}
+
+function renderLayout(
+  dna: DesignDNA,
+  fonts: CompiledDNA['fonts'],
+  motionIds: Set<string>
+): string {
+  const title = dna.projectName;
+  const description = `Mockup scaffolded from a Design DNA composition for ${dna.client}.`;
+  const hasPageTransition = motionIds.has('motion.page-transition');
+
+  // Preconnect + stylesheet links — the compiler hands us the URLs so we
+  // don't reverse-engineer them here.
+  const preconnects = fonts.preconnects.map((url) => {
+    const cross = url.includes('gstatic.com') ? ' crossorigin' : '';
+    return `    <link rel="preconnect" href="${url}"${cross} />`;
+  });
+  const stylesheets = fonts.stylesheets.map(
+    (url) => `    <link rel="stylesheet" href="${url}" />`
+  );
+
+  const importLines = [`import '../styles/global.css';`];
+  if (hasPageTransition) {
+    importLines.push(`import { ClientRouter } from 'astro:transitions';`);
+  }
+
+  // ClientRouter mounts in <head> per Astro docs — its presence enables
+  // browser-native View Transitions on cross-page navigation.
+  const clientRouterEl = hasPageTransition ? `\n    <ClientRouter />` : '';
+
+  return `---
+${importLines.join('\n')}
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = ${JSON.stringify(title)}, description = ${JSON.stringify(description)} } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+
+${preconnects.join('\n')}
+${stylesheets.join('\n')}${clientRouterEl}
+  </head>
+  <body class="bg-background text-ink font-body">
+    <slot />
+  </body>
+</html>
 `;
 }
